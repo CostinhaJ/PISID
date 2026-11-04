@@ -1,0 +1,31 @@
+Incrição de Grupos:
+https://docs.google.com/spreadsheets/d/1jtzaxCTfdzp9G7jhtAMNtdRhJcSKvUwy/edit?usp=sharing&ouid=105626801221684366409&rtpof=true&sd=true
+
+Diário do grupo:
+https://drive.google.com/drive/folders/1ybOqPucTSTmoJWmvMpHsW1bkK2QXVfJw?usp=sharing
+
+o INTUITO GERAL DO PROJETO É DISCUSSÃO DE IMPLEMENTAÇÕES justificadas por RSEF
+
+Problemas principais do trabalho:
+GESTÃO DOS DADOS ENVIADOS
+Análise da realidade e das estruturas de dados passadas pelo servidor.
+
+Triggers e Stored Procedures e coorelação com a constante chegada de informações.
+Temos que garantir que a base de dados mantem a sua coerencia.
+
+Especifição detalhada. (Dependente das tecnologias usadas pode existir especificações impossiveis)
+
+Troca de especificações:
+Intuito-> fazer análise e decidir porque é que a especificação é melhor ou pior
+
+MKTT -> Costuma haver problemas no transporte de dados e ligação direta
+ARGUMENTOS
+Robustes Segurança Eficiencia Flexibilidade
+
+Tarefas:
+FZER A ESTRUTURA DE IMPLEMENTAÇÃO NO GITHUB
+
+1º Estrutura da base de dados -> logs
+Correr a base de dados é entender o trabalho no detalhe geral
+
+2º Perfis e previlegios de utilizador

@@ -1,0 +1,39 @@
+Componentes essenciais do projeto:
+-Servidor do Iscte (Acesso aos sensores e à base de dados)
+-PC1 - PC de um dos elementos do grupo tem de correr uma base de dados distribuída noSQL Mongo
+-PC2 - PC de um dos elementos do grupo tem de correr uma base de dados SQL e um servidor HTML(WebPage) no xampp
+-BrokerMQTT - Vai desempenhar o papel de intermediário entre Cloud-PC1 e PC1-PC2
+-Smarphones dos Investigadores -> Vão poder monitorizar as experiencias pelo FrontEnd do servidor HTML do PC2
+
+Na cloud:
+
+1-Connectar aos sensores do Servidor do Iscte Piso7 
+2-Ou à simulação dos sensores disponibilizados em py no moodle (código adaptavel)
+
+Base de Dados da Cloud: 
+-Temperatura programada pelo arcondicionado (Não é a temperatura real lida pelos sensores devido a influencias)
+-Mapa do labirinto (Dentro do corredor que salas são possíveis alcançar)
+
+*Estes dados da cloud servem para manter a coerencia dos dados reais e os lidos pelos registos!*
+*Ao passar a informação do Mongo para o PC2 é necessário comparar os valores com os que vêm diretamente da Base de dados da cloud*
+*Se o desvio da temperatura média da experiencia for muito grande, substitui-se o dado lido pelo sensor pelo dado da BDCloud*
+
+Protocolos:
+
+MQTT (Passagem de informação em tempo real)
+https://www.youtube.com/watch?v=z4r4hIZcp40
+
+MQTT subscribe/publish é um protocolo de transportes de informação seguro, que funciona em ligações fracas com muitas falhas e pouca rede.
+
+Usa Brokers (bases de dados) que fazem de intermediarios de troca de informação entre partes
+
+Subscriber -> Recebe todas as atualizações passadas ao broker
+Publisher -> Envia (função publish("registos")) registos de informação ao broker
+Ambas as partes podem ser publishers e subscribers ao mesmo tempo
+
+Use Case no projeto: CloudSensores para MongoPC1, CouldSQL para SQLPC2, MongoPC1 para SQLPC1
+
+HTML -> Dispões as informações para o FrontEnd dos Investigadores
+
+Base de Dados distribuída:
+Designação da root DB (Não sei se é automático pelo mongo)

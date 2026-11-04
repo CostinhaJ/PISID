@@ -1,0 +1,23 @@
+2 Parametros a ser implementados
+
+(Mecanismo Incremental) transporte de dados. Saber se chegou, se deve ser enviado outravez, se é considerado spam
+
+Para os Alertas deve-se implementar os estados de perigo de aproximação aos limites.
+
+E deve-se decidir como é que vai ser apresentado o alerta no cliente. (Por java / trigger ou sp da base de dados) Pensar no spam gerado e como mitigar.
+
+Utilizar a média para decidir se deve ou não enviar o alerta
+Utilizar os parametros do investigador para decidir que tipo de alertas mostrar
+
+Decidir em que PC vai o código Java (Mongo -> SQL)
+
+Implementar o botão de exportar as iformaçõess dabase de dados e limpar as tabelas para a próxima experiencia.
+
+TPC: Implementar privilegios dos utilizadores (Ter em atenção aos triggers e sp's) que funcionalidades é que cada utilizador pode utilizar. Como fazer com que os utilizadores vejam apenas o que é que lhes diz respeito
+
+Funcionalidades de extração de dados mongo -> mySQL (Tentar a implementação de dicionários para garantir a coerencia de dados), funciona como objetos e ajuda na impentação dos registos em SQL
+
+Pensar muito sobre a aplicação em geral. Front-End, que botões existem? Que funcionalidades cada um pode ver? Fazer os MockUps
+Depois especificar as funcionalidades de cada mock-up Front-End -> HTML sp -> Altera registo da base de dados (Não é diretamente!)
+
+DEFINIR TAREFAS para as semanas

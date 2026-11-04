@@ -1,0 +1,29 @@
+C:\xampp\mysql\bin\mysql -u root -p
+
+
+GRANT EXECUTE ON PROCEDURE pisid.EditarUtilizador TO Investigador, Administrador, TecnicoDeManutencao;
+GRANT EXECUTE ON PROCEDURE pisid.EditarExperiencia TO Investigador, Administrador;
+GRANT EXECUTE ON PROCEDURE pisid.ConfigurarAlertas TO Investigador, Administrador;
+GRANT EXECUTE ON PROCEDURE pisid.CriarExperiencia TO Investigador, Administrador;
+GRANT EXECUTE ON PROCEDURE pisid.IniciarExperiencia TO Investigador, Administrador;
+GRANT EXECUTE ON PROCEDURE pisid.TerminarExperiencia TO Investigador, Administrador;
+GRANT EXECUTE ON PROCEDURE pisid.CriarUtilizador TO Administrador;
+GRANT EXECUTE ON PROCEDURE pisid.AtribuirExperienciaInvestigador TO Administrador;
+GRANT EXECUTE ON PROCEDURE pisid.EliminarUtilizador TO Administrador;
+GRANT EXECUTE ON PROCEDURE pisid.RemoverExperiencia TO Administrador;
+
+
+CALL CriarExperiencia(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+CALL EditarExperiencia(1, 'Descricao', 'Nova Descrição');
+CALL EditarExperiencia(1, 'NumeroRatosSala', 20);
+CALL EditarUtilizador('Password', "pass");
+
+CREATE USER java1;
+GRANT Java TO java1;
+SET DEFAULT ROLE Java FOR java1;
+ALTER USER java1 IDENTIFIED BY 'abc';
+
+
+
+

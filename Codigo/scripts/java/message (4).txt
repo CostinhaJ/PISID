@@ -1,0 +1,408 @@
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
+import com.mongodb.MongoException;
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import org.bson.Document;
+import org.bson.conversions.Bson;
+
+
+
+
+
+
+
+public class Anomalias {
+
+	private static int IDExperiencia = 0;		
+		
+	private static boolean connected = false;	
+	private static int startId = 0;
+
+
+public static void main(String[] args) {
+	
+	  //String ipv4= "192.168.1.65";
+	 String ipv4= "localhost";
+      // Connect to MongoDB server
+      try {
+      	  MongoClientURI uri = new MongoClientURI("mongodb://" + ipv4 + ":27019," + ipv4 + ":25019," + ipv4 + ":23019/?replicaSet=replicaPisid");
+          MongoClient mongoClient = new MongoClient(uri);
+
+          // Connect to the database
+          MongoDatabase database = mongoClient.getDatabase("experiencia");
+          MongoCollection<Document> collection = database.getCollection("anomalia");
+         
+         database.createCollection("lastProcessedId");
+         database.getCollection("lastProcessedId").insertOne(new Document());
+          
+          
+        
+          
+         int lastProcessedId = getLastProcessedIdFromMongoDB(database, "Anomalia");
+      
+          
+          
+          String url = "jdbc:mysql://192.168.55.14/pisid";
+          String user = "java1";
+          String password = "abc";
+          //collection2.drop();
+          Connection connection = connectSql(url, user, password);
+          
+          
+              
+              
+          while (connected) {
+        	  
+        	  
+        	  
+        	  try {
+        		      
+	                try (MongoCursor<Document> cursor = collection.find().iterator()) {
+	                    while (cursor.hasNext()) {
+	                        Document document = cursor.next();
+	                        
+	                        
+	                        int currentId = document.getInteger("incremental_id");
+	                        if(currentId > lastProcessedId) {
+	                        	System.out.println("Change occurred: " + document.toJson());
+	                        	
+	                        	
+	                	      
+	                        	
+	                       
+	                        	lastProcessedId = currentId;
+	                        
+	                        	
+	                        	updateLastProcessedIdInMongoDB(database,lastProcessedId, "Anomalia");
+	                        	
+	                        	int anomaliasPorMinuto =  getAnomaliasPorMinutoExperiencia(connection);
+	                        	System.out.println("AnomaliasPorMinuto defenido: " + anomaliasPorMinuto);
+	                        	
+	                        	double anomaliasPorMinutoAtual = alertAnomaliesPerMinute(collection , database);
+	                        	 
+	                        	if(anomaliasPorMinutoAtual >= anomaliasPorMinuto) {
+	                        		System.out.println("!!!Anomalias Por Minuto Excedido");
+	                        		insertAlerta(connection);
+	                        	}
+	                        	
+	                            Statement statement = connection.createStatement();
+	                            
+	                            
+	                            ResultSet resultSet = statement.executeQuery("SELECT * FROM alerta WHERE 1 = 0");
+	                        	
+	                        	
+	                        } else {
+	                        	//System.out.println("Skipping already processed document with ID: " + currentId);
+	                        }
+	                    }
+	                } catch (MongoException e) {
+	                    e.printStackTrace();
+	                }
+
+	           
+	                // Sleep for some time before querying again
+	                try {
+	                    Thread.sleep(1000); 
+	                } catch (InterruptedException e) {
+	                    e.printStackTrace();
+	                }
+
+	           
+	            
+              }catch (SQLNonTransientConnectionException e) {
+	            	
+          		System.err.println("!!!!!Connection Lost!!!!");
+          		connected = false;
+                  connection = connectSql(url, user, password);
+          		//e.printStackTrace(); 
+	           
+	           
+	            } catch (SQLException e) {	
+	            			e.printStackTrace();
+	                        System.err.println("Connection Lost");
+	                        connected = false;
+	                        connection = connectSql(url, user, password);
+	                    }
+	              
+	            }
+
+          
+	    
+
+	   
+
+	            mongoClient.close();
+
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	        
+	        
+	    }
+	    
+	
+	
+	
+	
+  
+
+
+
+	 private static Connection connectSql(String url, String username, String password) throws InterruptedException {
+	        Connection connection = null;
+	        while(true) {
+	        try {
+	            connection = DriverManager.getConnection(url, username, password);
+	            System.out.println("Connected to MariaDB");
+	            connected = true;
+	            break;
+	        } catch (SQLException e) {
+	        	//e.printStackTrace();
+	        	System.err.println("Failed to connect to MariaDB. Retrying in 1 seconds...");
+             Thread.sleep(1000); 
+             connected= false;
+	        }
+	        }
+	        return connection;
+	    }
+
+
+
+
+	 
+	 private static int getLastProcessedIdFromMongoDB(MongoDatabase database, String sensorName) {
+		    try {
+		        MongoCollection<Document> collection = database.getCollection("lastProcessedId");
+		        Document doc = collection.find().first();
+		        if (doc != null) {
+		            int lastProcessedId = 0;
+		            if (sensorName.equals("Sensor1")) {
+		                lastProcessedId = doc.getInteger("lastProcessedIdSensor1", 0);
+		            } else if (sensorName.equals("Sensor2")) {
+		                lastProcessedId = doc.getInteger("lastProcessedIdSensor2", 0);
+		            }  else if (sensorName.equals("Anomalia")) {
+		                lastProcessedId = doc.getInteger("lastProcessedIdAnomalia", 0);
+		            } 
+		            System.out.println("Last processed ID for " + sensorName + ": " + lastProcessedId);
+		            return lastProcessedId;
+		        } else {
+		            System.out.println("No document found in lastProcessedId collection");
+		            return 0;
+		        }
+		    } catch (MongoException e) {
+		        e.printStackTrace();
+		        return 0;
+		    }
+		}
+
+
+		private static void updateLastProcessedIdInMongoDB(MongoDatabase database, int lastProcessedId, String sensorName) {
+		    try {
+		        MongoCollection<Document> collection = database.getCollection("lastProcessedId");
+		        Document filter = new Document();
+		        String fieldName;
+		        if (sensorName.equals("Sensor1")) {
+		            fieldName = "lastProcessedIdSensor1";
+		        } else if (sensorName.equals("Sensor2")) {
+		            fieldName = "lastProcessedIdSensor2";
+		        } else if (sensorName.equals("Movimentos")) {
+		            fieldName = "lastProcessedIdMovimentos";
+		        } else if (sensorName.equals("Anomalia")) {
+		            fieldName = "lastProcessedIdAnomalia";
+		        } else {
+		            // Handle unknown sensorName
+		            System.out.println("Unknown sensorName: " + sensorName);
+		            return;
+		        }
+		        Document update = new Document("$set", new Document(fieldName, lastProcessedId));
+		        collection.updateOne(filter, update);
+		        System.out.println("Last processed ID for " + sensorName + " updated to: " + lastProcessedId);
+		    } catch (MongoException e) {
+		        e.printStackTrace();
+		    }
+		}
+
+
+
+
+		private static boolean isExperienciaADecorrer(Connection connection) {
+		
+			 try {
+			        Statement statement = connection.createStatement();
+			        ResultSet resultSet = statement.executeQuery("SELECT IDExperiencia FROM experiencia WHERE Estado = 'ADecorrer'");
+
+			        if (resultSet.next()) {
+			        	
+			           IDExperiencia = resultSet.getInt("IDExperiencia"); 
+			           
+			            return true;
+			        } else {
+			           return false;
+			        }
+			     
+			 } catch (SQLException e) {
+			        e.printStackTrace();		        
+			        return false;
+			        
+			    } 
+		}
+		
+		private static int getAnomaliasPorMinutoExperiencia(Connection connection) {
+		    int AnomaliasPorMinuto = 25; 
+		    
+		    try {
+		        Statement statement = connection.createStatement();
+		        ResultSet resultSet = statement.executeQuery("SELECT IDExperiencia, AnomaliasPorMinuto FROM experiencia WHERE Estado = 'ADecorrer'");
+		        
+		        if (resultSet.next()) {
+		            IDExperiencia = resultSet.getInt("IDExperiencia"); 
+		            AnomaliasPorMinuto = resultSet.getInt("AnomaliasPorMinuto");
+		            return AnomaliasPorMinuto;
+		        } else {
+		            AnomaliasPorMinuto = 25;
+		            return AnomaliasPorMinuto;
+		        }
+		    } catch (SQLException e) {
+		        e.printStackTrace();		        
+		        return AnomaliasPorMinuto; 
+		        
+		    }
+		}
+			
+			
+
+		private static double alertAnomaliesPerMinute(MongoCollection<Document> collection , MongoDatabase database) {
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+			 LocalDateTime oneMinuteAgo = LocalDateTime.now().minusSeconds(60);
+
+		        Bson filter = Filters.and(
+		                Filters.gte("current_time", formatter.format(oneMinuteAgo))
+		        );
+
+		        long totalAnomalies = collection.count(filter);
+
+		        double anomaliesPerMinute = (double) totalAnomalies / 1; 
+
+		        System.out.println("Total Anomalies: " + totalAnomalies);
+		        System.out.println("Anomalies Per Minute: " + (int) anomaliesPerMinute);
+
+		        return  anomaliesPerMinute;
+	    }
+
+	  
+		
+		
+	public static void insertAlerta(Connection connection) {
+		
+	if(isExperienciaADecorrer(connection)) {
+			String sql = "INSERT INTO Alerta (TipoAlerta, Hora, Mensagem, HoraEscrita, Sala, Sensor, Leitura, IDExperiencia) " +
+	                "VALUES (?, CURRENT_TIMESTAMP(), ?, NULL, NULL, NULL, NULL, ?)";
+	   
+	   try ( PreparedStatement pstmt = connection.prepareStatement(sql)) {
+	       
+	       String tipoAlerta = "Anomalia";
+	       String mensagem =  "Anomalias excedem limiar critico";
+	       
+	       pstmt.setString(1, tipoAlerta);
+	       pstmt.setString(2, mensagem);
+	       pstmt.setInt(3, IDExperiencia);
+	       
+	       // Executa a consulta
+	       pstmt.executeUpdate();
+	       
+	       System.out.println("Alerta inserido com sucesso!");
+	       
+	   } catch (SQLException e) {
+	       System.out.println("Erro ao inserir o alerta: " + e.getMessage());
+	   }
+	} else {
+		String sql = "INSERT INTO Alerta (TipoAlerta, Hora, Mensagem, HoraEscrita, Sala, Sensor, Leitura, IDExperiencia) " +
+	                "VALUES (?, CURRENT_TIMESTAMP(), ?, NULL, NULL, NULL, NULL, NULL)";
+	   
+	   try ( PreparedStatement pstmt = connection.prepareStatement(sql)) {
+	       
+	       String tipoAlerta = "Anomalia";
+	       String mensagem =  "Anomalias excedem limiar critico";
+	       
+	       pstmt.setString(1, tipoAlerta);
+	       pstmt.setString(2, mensagem);
+	       
+	       
+	       // Executa a consulta
+	       pstmt.executeUpdate();
+	       
+	       System.out.println("Alerta inserido com sucesso!");
+	       
+	   } catch (SQLException e) {
+	       System.out.println("Erro ao inserir o alerta: " + e.getMessage());
+	   }
+		}
+
+	}
+	
+		
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+}

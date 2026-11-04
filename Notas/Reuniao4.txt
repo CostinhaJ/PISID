@@ -1,0 +1,3 @@
+Java -> Root ?? Segurança
+
+Migrações Mongo-> Java ->SQL Java-> Se chega ao java já chegou ao PC2 em principio não há stresses

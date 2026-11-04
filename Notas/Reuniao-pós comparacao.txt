@@ -1,0 +1,22 @@
+Sendo que o ID incremental é guardado no java, temos de ver a parte de como é guardado o ultimo ID se o java falhar. (Change streams não faz incremental)
+
+Mecaismo incremental de MQTT-Mongo com base em timestamps nem faz sentid DICA -> Método Message arived
+
+Apagamos o mongo quando começamos a experiencia como, o java é que avisa??? Os dados anómalos são guardados no mongo??
+
+O trigger de temperatura tem de ler mais algum registo?
+
+Campo ID experiencia obrigatoria na tabela de medição?
+
+O java faz insert ou chama um SP que faz um insert? Temos de mexer nos SP's
+
+PHP chama UPDATE para fazer alteração da Experiencia com SP ou só update? PHP.init -> PERCEBER PHPMyAdmin
+Trigger não tem after select. O problema é esse
+
+Também temos de implementar a solução MQTT para poder comentar sobre.
+
+Timers e countdowns é para usar com Java. Eventos é muito compliado
+
+TODO:
+-SP editar experiencia -> investigador só pode alterar a sua experiencia. Passar os privilégios do 
+-ANDROID

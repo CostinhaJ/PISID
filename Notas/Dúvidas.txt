@@ -1,0 +1,28 @@
+Para o Cliente
+
+1-O sistema é que tem de avisar o Tecnico de Manutençao para:
+-terminar a experiencia (abrindo as portas) Após o investigador tocar no botão de terminar. 
+-actuar nos aparelhos de ar condicionado, para corrigir a temperatura.
+Como, se só o investigador pode aceder aos dados? O investigador envia mensagem? XD
+
+2-Sabendo que a base de dados da nuvem tem os corredores que ligam as salas Como é que passamos a disposição das salas?
+
+3- Os formulários para o administrador não são para serem  implementados. 
+Quando se fala em alterar diretamente na base de dados: 
+-Seram adicionados utilizadores e relacionados experiencias atravez do phpMyAdmin?(Sim) O administrador tem essa formação???Sim
+
+4-O Investigador faz acessos diretamente à base de dados. A visualização das suas experiencias e dos outros é na BD???
+ Signinica que não precisa ecrã de visualizar dados HTML?  SIM 
+
+Para os Colegas:
+
+1-Ignorou-se o facto da especificação pedir para saber, para cada substância, quantos ratos foi administrada em cada experiencia.
+
+2-O Investigador recebe apenas os seus alertas? Mesmo podendo acompanhar todas as outras experiencias pelo tml?
+
+3- Diferença entre anomalias e outliars?(Dados errados e Valores fora da Média)
+
+
+Criar utilizadores
+Criar experiencia (sÃO OS SPS MAIS DIFICEIS)
+Alterar experiencia

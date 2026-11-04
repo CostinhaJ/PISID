@@ -1,0 +1,22 @@
+Tipo CDSI
+
+A ideia é descobrir as complicações que são originadas pelo projeto e os protocolos de comunicação
+Entre SQL, noSQL, MKTT, ...
+
+Perceber a estrutura do projeto, para a reunião
+
+Meter o número do grupo no link do powerpoint. (Zona verde)
+
+Usar os tempos da cadeira para reunir.
+
+Preencher o diário do grupo da cadeira
+
+Fazer atas de planemaento da semana depois de cada reunião
+
+Para o projeto (Vai haver picos dos sensores, que temos de dar handle)
+Manter a segurança dos dados usando objetos.
+Fazer verificações de valores antes de guardar
+
+Para o trabalho, temos de ter os favalores funcionais de segurança, e eficiencia, flexibilidade e robustez do código.
+Por exemplo: Usamos mktt ou não? Porque? Segurança?
+Usamos Trigger ou SP? Porque? tempo?

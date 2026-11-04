@@ -1,0 +1,57 @@
+Gestão de experiencias de Ratos num Lab com substâncias e odores, portas e sensores
+
+System:
+-Gera Alertas
+-Identifica outliars
+-Regista como anomalia
+-Habilita o botão de TERMINAR/COMEÇAR Experiencia no interface Inverstigador
+-...
+
+Tecnico de Manutenção:
+-Avisa que a experiencia está apostos e pode dar inicio
+-Ajusta a temperatura dos ar condicionados (Manual)
+-Abre Portas para terminar experiencia (Manual)
+
+-Automatico? -É avisado do estado da experiencia (Como? Mail? Mensagem? SystemUserHTML?)
+
+Investigador:
+-Fazer login na app e na webapp?
+-Criar/editar Experiência. (User task -> fetch experienciaByid() (Não pode alterar FK nem PK))
+-Visualizar experiencia (Suas e dos outros colegas)
+-Inicia/Termina a experiencia (Botão ativado automaticamente, Começa-> Quando o tecnico avisar que pode. Termina -> quando uma das 4 situações acontecerem Ativa SP que congela as passagens de informação? ou congela automáticamente? )
+
+-Automático- Recebe alerta de temperatura, exp concluida?
+
+Todo os outros acessos são diretamente na base de dados portanto, visualizar registos?
+
+
+Administrador da Aplicação:
+-criar/eliminar utilizadores (investigadores e técnicos de manutenção) [USER_TASK_HTML]
+-criar/apagar e atribuir experiências a investigadores (USER_TASK_HTML) que usam php para chamar o stored procedure e passa as 	perms do admin da app e não do código java(system)
+-manutenção das experiências (HTML FORM):
+	-registar as substâncias administradas,  
+	os odores de cada sala, 
+	a quantidade de ratos total, 
+	as temperaturas limite,
+	os parâmetros “x -> ratos confortáveis (Concluída com sucesso)” , “y -> demasiados ratos (abortar)” e “z -> limite max 	(abortar)” anteriormente definidos. 
+	-REINICIALIZAR o PROCESSO de migração das leituras MONGO -> SQL (Em principio Windows? Não sei se dá com SP)
+Administrador da Basde de Dados:
+
+
+
+Base de Dados da Nuvem:
+
+	Erros de sensores de passagens: LABIRINTO RATOS (O mecanismo que liga a sala ao corredor apenas permite que os ratos circulem num sentido. Iniciam na sala1, acabam na distribuido pelas 9 salas)
+	-Rato passar e não ser registado
+	-Rato não passar e ser registado
+	-Rato passar em configuração de labirinto impossivel (A-B e não existe corredor A-B)
+Solução (Contruir um mapa de trocas de salas possíveis e registar copia na bd rel para verificar erros de sensores)
+
+System Base de dados:
+	Terminar Experiencia (Ativa botão de terminar para o investigador):
+		-Terminar experiencia automáticamente após 10 min (Limite máximo de tempo)
+		-Limite de temperatura atingido
+		-Limite de ratos na sala atingido
+		-Ratos confortáveis nas suas salas (Tempo x sem registos de passagens)
+
+System Java:

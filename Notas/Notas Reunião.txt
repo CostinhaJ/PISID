@@ -1,0 +1,17 @@
+1- Change streams em vez de id incremental e find 2 em 2 segundos (Ter em atenção ao facto que temos de ter mais de 1 thread para receber vários objetos)
+
+3- É preciso continuar a receber alertas mesmo quando não há experiencia a decorrer! Não preciso alerta estar acossiado a experiencia. Para o técnico perceber se algum sensor pifou.
+
+4- É preciso Cópia da base de dados da cloud para SQL e adicionar Trigger Before insert para verificar se os movimentos são possiveis. Quando? Inicio de cada experiencia? A nossa em java é mais lógica! Menos complexidade (Prof disse)
+
+5- Estado Experieincia são relevantes para os Selects e botões de começar e Terminar
+
+6- Before Update o Stored Procedure tem de verificar se o utilizador está acossiado à experiencia que está a tentar alterar (Para além dos privilégios já implementados e passados ao SP)
+
+7- O prof vai pifar um dos sensores. Não é para usar THREADS! Mas sim MAIN. Uma main por sensores. Caso um dos sensores pife, o programa não termina. (Para que é que ele havia adicionar 2 sensores de temperatura??)
+
+8- Timer PC2 java para verificar se os ratos estão confortaveis nas salas
+
+9- Perceber porque é que não se deve meter senhas(PHPMyAdmin faz isso)
+
+10- O investigador só pode alterar a sua experiencia. Para adicionar informação à experiencia a decorrer, o java chama SP e procura a experiencia por ESTADO e não por ID. Como é que vou procurar por ID se o que eu quero é saber qual é o ID?? É isso

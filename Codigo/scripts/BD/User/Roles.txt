@@ -1,0 +1,47 @@
+no cmd
+cd C:\xampp\mysql\bin
+
+mysql -u root -p
+
+-- Criar roles
+CREATE ROLE Administrador;
+CREATE ROLE Investigador;
+CREATE ROLE TecnicoDeManutencao;
+CREATE ROLE Java;
+
+-- Permissões para Administrador
+GRANT SELECT ON pisid.alerta TO Administrador;
+GRANT SELECT, INSERT, UPDATE, DELETE ON pisid.experiencia TO Administrador;
+GRANT SELECT, INSERT, UPDATE, DELETE ON pisid.medicoesSalas TO Administrador;
+GRANT SELECT, INSERT, UPDATE, DELETE ON pisid.utilizador TO Administrador;
+GRANT SELECT, INSERT, UPDATE ON pisid.configalertas TO Administrador;
+GRANT SELECT ON pisid.medicoespassagens TO Administrador;
+GRANT SELECT ON pisid.medicoestemperatura TO Administrador;
+
+-- Permissões para Investigador
+GRANT SELECT ON pisid.alerta TO Investigador;
+GRANT SELECT ON pisid.experiencia TO Investigador;
+GRANT SELECT ON pisid.medicoesSalas TO Investigador;
+GRANT SELECT ON pisid.configAlertas TO Investigador;
+GRANT SELECT ON pisid.medicoesPassagens TO Investigador;
+GRANT SELECT ON pisid.medicoesTemperatura TO Investigador;
+
+-- Permissões para Técnico de Manutenção
+GRANT SELECT ON pisid.alerta TO TecnicoDeManutencao;
+GRANT SELECT ON pisid.experiencia TO TecnicoDeManutencao;
+GRANT SELECT ON pisid.medicoesSalas TO TecnicoDeManutencao;
+GRANT SELECT ON pisid.configAlertas TO TecnicoDeManutencao;
+GRANT SELECT ON pisid.medicoesPassagens TO TecnicoDeManutencao;
+GRANT SELECT ON pisid.medicoesTemperatura TO TecnicoDeManutencao;
+
+-- Permissões para Java
+GRANT SELECT, INSERT ON pisid.alerta TO Java;
+GRANT SELECT, INSERT ON pisid.experiencia TO Java;
+GRANT SELECT, INSERT ON pisid.medicoesSalas TO Java;
+GRANT SELECT ON pisid.utilizador TO Java;
+GRANT SELECT ON pisid.configalertas TO Java;
+GRANT SELECT, INSERT  ON pisid.medicoespassagens TO Java;
+GRANT SELECT, INSERT  ON pisid.medicoestemperatura TO Java;
+
+
+mysqladmin -u root password "abc"

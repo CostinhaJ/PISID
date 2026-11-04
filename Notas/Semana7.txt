@@ -1,0 +1,11 @@
+SP -> Se o parametro passado a null usar o parametro que estava na tabela
+
+SP -> Apagar utilizador ? (Drop user no fim! delete tabela primeiro) Apagar utilizador - apagar utilizador -> Não apagar experiencia (RESTRICTED)
+
+Temperatura -> Receber temperaturas a todo o momento. (nÃO RELACIONAR COM A EXPERIENCUA)
+Para Passagens -> Acossiar ás experiencias
+
+TPC -> O prof vai mandar abaixo o SQL (Stop PHPMyAdmin) Fazer o q?
+Temos que fazer a passagem dos dados da nuvem para mySQL
+
+Java vai fazer as verificações à base de dados e não copia a estrutura do labirinto
