@@ -1,10 +1,10 @@
 <?php
-	$db = "pisid"; //database name
+	$db = getenv("DB_NAME") ?: "pisid"; //database name
 	//$username = $_POST["username"];
 	//$password = $_POST["password"];
-	$username = "root";
-	$password = "abc";
-	$dbhost = "localhost"; 
+	$username = getenv("DB_USER") ?: "root";
+	$password = getenv("DB_PASSWORD") ?: "abc";
+	$dbhost = getenv("DB_HOST") ?: "localhost"; 
 
     $conn = mysqli_connect($dbhost,$username,$password,$db);
 	$sql = "SELECT Mensagem, Leitura, Sala, Sensor, TipoAlerta, Hora, HoraEscrita from alerta where IDExperiencia IN ( SELECT IDExperiencia FROM experiencia WHERE estado = 'ADecorrer' ) AND Hora >= now() - interval 60 minute ORDER BY Hora ASC";

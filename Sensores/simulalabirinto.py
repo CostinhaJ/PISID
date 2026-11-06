@@ -7,6 +7,11 @@ import threading
 import paho.mqtt.client as mqtt
 import paho.mqtt.publish as publish
 import sys
+import os
+
+MQTT_HOST = os.getenv("MQTT_HOST", "broker.mqttdashboard.com")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+TOPIC_MAZE = os.getenv("MQTT_TOPIC_MAZE", "ratos")
 
 #Mouse Movements    
 def mouseMove():
@@ -31,7 +36,7 @@ def on_disconnectMqttRoom(client, userdata, rc):
         print("Unexpected MQTT disconnection. Will auto-reconnect")
     clientMqttRoom.on_connect = on_connectMqttRoom
     clientMqttRoom.on_disconnect = on_disconnectMqttRoom
-    clientMqttRoom.connect('broker.mqttdashboard.com', 1883)
+    clientMqttRoom.connect(MQTT_HOST, MQTT_PORT)
            
 def on_connectMqttRoom(client, userdata, flags, rc):
     print("MQTT Room Connected with result code "+str(rc))
@@ -40,10 +45,10 @@ def on_connectMqttRoom(client, userdata, flags, rc):
 def sendMqttRoom(currentRoom, nextRoomToGo):
     jasonString="{Hora:\"" + str(datetime.now()) + "\", SalaOrigem:" + str(currentRoom) + ", SalaDestino:" + str(nextRoomToGo) + "}"
     try:
-        clientMqttRoom.publish("pisid_grupo10_maze",jasonString,qos=0)
+        clientMqttRoom.publish(TOPIC_MAZE,jasonString,qos=0)
         time.sleep(1) 
         clientMqttRoom.loop()       
-        print(jasonString)
+        print(jasonString, flush=True)
     except Exception:
        print("Error sendMqttRoom")
        pass 
@@ -51,11 +56,11 @@ def sendMqttRoom(currentRoom, nextRoomToGo):
 clientMqttRoom = mqtt.Client(client_id="clientIDRoom")
 clientMqttRoom.on_connect = on_connectMqttRoom
 clientMqttRoom.on_disconnect = on_disconnectMqttRoom
-clientMqttRoom.connect('broker.mqttdashboard.com', 1883)
+clientMqttRoom.connect(MQTT_HOST, MQTT_PORT)
     
-numberMouses=5
-numberRooms=4
-stepslimite = 10
+numberMouses = int(os.getenv("SIM_NUMBER_MICE", "5"))
+numberRooms = int(os.getenv("SIM_NUMBER_ROOMS", "4"))
+stepslimite = int(os.getenv("SIM_STEPS_LIMIT", "10"))
 totalmousefinished = 0
 
 while True:
@@ -63,7 +68,7 @@ while True:
     totalmousefinished = 0
     mousesMoving=[]
     counter=0
-    clientMqttRoom.publish("pisid_grupo10_maze","{Hora:\"2000-01-01 00:00:00\", SalaOrigem:0, SalaDestino:0}",qos=0)
+    clientMqttRoom.publish(TOPIC_MAZE,"{Hora:\"2000-01-01 00:00:00\", SalaOrigem:0, SalaDestino:0}",qos=0)
     mousesstarted = 0
     flag = True
     i = 0
@@ -84,7 +89,8 @@ while True:
     while flag:  
         #i = i + 1
         #print(i)
-        if totalmousefinished >= numberMouses:  
+        time.sleep(0.5)  # recovery: avoid a busy loop at 100% CPU
+        if totalmousefinished >= numberMouses:
           flag = False
           print("************************************** End Experiment, all mice quiet ***************************************" )
         

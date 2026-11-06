@@ -1,0 +1,782 @@
+import com.mongodb.AggregationOutput;
+import com.mongodb.BasicDBObject;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
+import com.mongodb.MongoException;
+import com.mongodb.client.AggregateIterable;
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import org.bson.Document;
+
+
+
+public class Movimentos {
+
+	private static int numeroSalas = 0;
+	private static List<List<Integer>> corredores = new ArrayList<>();
+	private static int IDExperiencia = 0;
+	private static int numRatos = 0 ;
+	 private static boolean connected = false;
+	 private static int anomaliasId = 0;
+	 
+	 
+	 
+	 public static void main(String[] args) {
+			
+		//  String ipv4= "192.168.1.65";
+		 String ipv4= "localhost";  
+	        // Connect to MongoDB server
+	        try {
+	        	
+	        	
+	        	MongoClientURI uri = new MongoClientURI(Env.get("MONGO_URI", "mongodb://localhost:27019,localhost:25019,localhost:23019/?replicaSet=replicaPisid"));
+	            MongoClient mongoClient = new MongoClient(uri);
+
+	            // Connect to the database
+	            MongoDatabase database = mongoClient.getDatabase("experiencia");
+	            
+	            MongoCollection<Document> collection = database.getCollection("medicoesMovimentos");
+	           
+	           // Recovery: create the state document only once, so that all migrators can start.
+	           if (database.getCollection("lastProcessedId").count() == 0) {
+	               database.getCollection("lastProcessedId").insertOne(new Document());
+	           }
+	            
+	           MongoCollection<Document> anomaliaCollection = database.getCollection("anomalia");
+	            
+	            anomaliasId = getLastId(anomaliaCollection);
+	            
+	           int lastProcessedId = getLastProcessedIdFromMongoDB(database, "Movimentos");
+
+		      getMazeInformation();
+		      
+	            
+		      //System.out.println("1234124");
+	            String url = Env.get("MYSQL_URL", "jdbc:mariadb://localhost:3306/pisid");
+               String user = Env.get("MYSQL_USER", "java1");
+               String password = Env.get("MYSQL_PASSWORD", "abc");
+	            //collection2.drop();
+
+	            //System.out.println("1234124");
+	            Connection connection = connectSql(url, user, password ,database);
+
+	            //System.out.println("1234124");
+	         
+	           
+	            while (connected) {
+	            	//desconexao(connection);
+	            try {
+	            	 boolean isTerminated = isTerminated(IDExperiencia, database );
+	               	 if(isTerminated) {
+	               		 System.out.println("A EXPERIENCIA TERMINOU");
+	               		
+	               		 connection = connectSql(url, user, password, database);
+	               	 } else {
+	               		
+	               		 inatividadeAndConectividade(connection);        	
+	               		
+	               	 }
+	               	 
+	            	int expAdecorrerMongo = getExperienciaADecorrer(database);
+	            	//System.out.println("Value= "+ expAdecorrerMongo);
+	            	
+	             if(expAdecorrerMongo == 0) {
+	                try (MongoCursor<Document> cursor = collection.find().iterator()) {
+	                    while (cursor.hasNext()) {
+	                        Document document = cursor.next();
+	                        
+	                        
+	                        int currentId = document.getInteger("incremental_id");
+	                        
+	                        if(currentId > lastProcessedId) {
+	                        	//System.out.println("Change occurred: " + document.toJson());
+	                        	
+	                        	
+	                	       
+	                        	lastProcessedId = currentId;
+	                        	
+	                        	updateLastProcessedIdInMongoDB(database,lastProcessedId, "Movimentos");
+	                        
+	                        	//insertDataIntoMariaDB(document, connection);
+	                        	
+	                        } else {
+	                        	//System.out.println("Skipping already processed document with ID: " + currentId);
+	                        }
+	                    }
+
+                    	updateExperienciaADecorrer(database, 1);
+                    	
+	                } catch (MongoException e) {
+	                    e.printStackTrace();
+	                }
+	             } else {
+	            	 
+	            	  
+	               //		insertRooms(connection , database, numRatos);
+	            	 
+	            	 try (MongoCursor<Document> cursor = collection.find().iterator()) {
+		                    while (cursor.hasNext()) {
+		                        Document document = cursor.next();
+		                        
+		                        
+		                        int currentId = document.getInteger("incremental_id");
+		                        
+		                        if(currentId > lastProcessedId) {
+		                        	System.out.println("Change occurred: " + document.toJson());
+		                        	
+		                        	
+		                	       
+		                        	lastProcessedId = currentId;
+		                        	
+		                        	
+		                        	
+		                        	updateLastProcessedIdInMongoDB(database,lastProcessedId, "Movimentos");
+		                        	
+		                        	insertDataIntoMariaDB(document, connection, anomaliaCollection, database);
+		                        	
+		                        	
+		                        	
+		                        } else {
+		                        	//System.out.println("Skipping already processed document with ID: " + currentId);
+		                        }
+		                    }
+		                } catch (MongoException e) {
+		                    e.printStackTrace();
+		                }
+	             }
+
+	                // Sleep for some time before querying again
+	                try {
+	                    Thread.sleep(1000); 
+	                } catch (InterruptedException e) {
+	                    e.printStackTrace();
+	                }
+	            } catch (java.sql.SQLIntegrityConstraintViolationException e) {
+	                
+	                System.out.println("!!!!!!!!!!!!!!!Sala Origem has zero rats!!!!!!!!!!!!!");
+	               
+	                
+	            }catch (SQLNonTransientConnectionException e) {
+	            	
+            		System.err.println("!!!!!Connection Lost!!!!");
+            		connected = false;
+                    connection = connectSql(url, user, password, database);
+            		//e.printStackTrace(); 
+        	   
+	                
+	            } catch (SQLException e) {	
+	            	
+	            	
+	                        System.err.println("Connection Lost");
+	                        e.printStackTrace();
+	                        connected = false;
+	                        connection = connectSql(url, user, password, database);
+	                    }
+	              
+	            }
+	        
+	    
+
+	   
+
+	            mongoClient.close();
+
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	        
+	        
+	    }
+	    
+	
+	
+	
+	 private static void insertDataIntoMariaDB(Document document, Connection connection, MongoCollection<Document> anomaliaCollection ,MongoDatabase database) throws Exception {
+	        String hora = document.getString("Hora");
+	        int salaOrigem = document.getInteger("SalaOrigem");
+	        int salaDestino = document.getInteger("SalaDestino");
+	        
+		      if(isCorredorValid(salaOrigem, salaDestino) ) { 
+		    	  
+		        String insertQuery = "INSERT INTO medicoespassagens (Hora, SalaOrigem, SalaDestino, IDExperiencia) VALUES (?, ?, ?, ?)";
+	           PreparedStatement insertStatement = connection.prepareStatement(insertQuery);
+		        java.sql.Timestamp timestamp = java.sql.Timestamp.valueOf(hora);
+		        insertStatement.setTimestamp(1, timestamp);
+		        insertStatement.setInt(2, salaOrigem);
+		        insertStatement.setInt(3, salaDestino);
+		        insertStatement.setInt(4, IDExperiencia); 
+		        
+		        int rowsAffected = insertStatement.executeUpdate();
+		        
+		        if (rowsAffected == 1) {
+		        	
+		            System.out.println("Data inserted successfully into MariaDB! SalaOrigem: " + salaOrigem + " to SalaDestino: " + salaDestino + " Hora: " + hora);
+		            
+		            
+		        } else {
+		            System.err.println("Error inserting data! Rows affected: " + rowsAffected);
+		        }
+	
+		        insertStatement.close();
+		        
+	 		} else {
+	 			System.out.println("Corredor invalido SalaOrigem: " + salaOrigem + " SalaDestino: " + salaDestino);
+	 			uploadAnomalia(document , database);
+	 			
+	 		}
+		      
+	    }
+
+	    
+	 
+	 
+	 
+	 private static int getLastProcessedIdFromMongoDB(MongoDatabase database, String sensorName) {
+		 
+		    try {
+		        MongoCollection<Document> collection = database.getCollection("lastProcessedId");
+		        Document doc = collection.find().first();
+		        if (doc != null) {
+		            int lastProcessedId = 0;
+		            if (sensorName.equals("Sensor1")) {
+		                lastProcessedId = doc.getInteger("lastProcessedIdSensor1", 0);
+		            } else if (sensorName.equals("Sensor2")) {
+		                lastProcessedId = doc.getInteger("lastProcessedIdSensor2", 0);
+		            } else if (sensorName.equals("Movimentos")) {
+		                lastProcessedId = doc.getInteger("lastProcessedIdMovimentos", 0);
+		            }
+		            System.out.println("Last processed ID for " + sensorName + ": " + lastProcessedId);
+		            return lastProcessedId;
+		        } else {
+		            System.out.println("No document found in lastProcessedId collection");
+		            return 0;
+		        }
+		    } catch (MongoException e) {
+		        e.printStackTrace();
+		        return 0;
+		    }
+		}
+
+		private static void updateLastProcessedIdInMongoDB(MongoDatabase database, int lastProcessedId, String sensorName) {
+		    try {
+		        MongoCollection<Document> collection = database.getCollection("lastProcessedId");
+		        Document filter = new Document();
+		        String fieldName;
+		        if (sensorName.equals("Sensor1")) {
+		            fieldName = "lastProcessedIdSensor1";
+		        } else if (sensorName.equals("Sensor2")) {
+		            fieldName = "lastProcessedIdSensor2";
+		        } else if (sensorName.equals("Movimentos")) {
+		            fieldName = "lastProcessedIdMovimentos";
+		        } else {
+		            // Handle unknown sensorName
+		            System.out.println("Unknown sensorName: " + sensorName);
+		            return;
+		        }
+		        Document update = new Document("$set", new Document(fieldName, lastProcessedId));
+		        collection.updateOne(filter, update);
+		        System.out.println("Last processed ID for " + sensorName + " updated to: " + lastProcessedId);
+		    } catch (MongoException e) {
+		        e.printStackTrace();
+		    }
+		}
+	
+		private static int getExperienciaADecorrer(MongoDatabase database){
+		try {
+			MongoCollection<Document> collection = database.getCollection("lastProcessedId");
+			Document doc = collection.find().first();
+			
+	        if (doc != null) {      
+	             int value = doc.getInteger("experienciaADecorrer", 0);
+	             //System.out.println("Got experienciaADecorrer value = " + value);
+	            return value;
+	        } else {
+	            System.out.println("No experiencaADecorrer found in collection");
+	            return 0;
+	        }
+	    } catch (MongoException e) {
+	        e.printStackTrace();
+	        return 0;
+	    }
+		}
+		
+		
+		private static void updateExperienciaADecorrer(MongoDatabase database, int value) {
+			try {
+		        MongoCollection<Document> collection = database.getCollection("lastProcessedId");
+		        Document filter = new Document();
+		        String fieldName = "experienciaADecorrer";
+		    
+		        Document update = new Document("$set", new Document(fieldName, value));
+		        collection.updateOne(filter, update);
+		        //System.out.println("Updated in mongo experienciaADecorrer: "+ value);
+		    } catch (MongoException e) {
+		        e.printStackTrace();
+		    }
+		}
+	   
+	 private static Connection connectSql(String url, String username, String password , MongoDatabase database) throws InterruptedException {
+	        Connection connection = null;
+	        while(true) {
+	        try {
+	        	//System.out.println("1234124");
+	            connection = DriverManager.getConnection(url, username, password);
+	            //System.out.println("1234124");
+	            //System.out.println("Connected to MariaDB");
+	            connected = true;
+	         
+	            
+		            Statement statement = connection.createStatement();
+		            ResultSet resultSet = statement.executeQuery(" SELECT IDExperiencia FROM `experiencia` WHERE Estado = 'ADecorrer' ");
+			            if (resultSet.next()) {
+			                IDExperiencia = resultSet.getInt("IDExperiencia");
+			                System.out.println("Experiencia a decorrer: " + IDExperiencia);
+			                int numeroRatos = getNumRatos(connection);
+		               		insertRooms(connection ,database , numeroRatos, IDExperiencia);
+//			                Statement statement2 = connection.createStatement();
+//				            ResultSet resultSet2 = statement.executeQuery(" SELECT NumeroRatos FROM `experiencia` WHERE IDExperiencia = " + IDExperiencia);
+//				            if (resultSet2.next()) {
+//				            	 numRatos = resultSet.getInt("numeroRatos"); 
+//				            	 System.out.println("Numero de ratos da experiencia: " + numRatos);
+//				            }
+				            
+			                break;
+			            } else {
+			                System.out.println("A espera de uma experiencia a decorrer");
+			               
+			                updateExperienciaADecorrer(database, 0);
+			                Thread.sleep(1000);
+			            }
+	            
+			            
+			            
+			            
+	        } catch (SQLException e) {
+	        	System.err.println("Failed to connect to MariaDB. Retrying in 1 seconds...");
+             Thread.sleep(1000); 
+             connected= false;
+	        }
+	        }
+	        return connection;
+	    }
+	
+
+	
+	
+	
+	private static void getMazeInformation() throws InterruptedException {
+		while(true) {
+		 	String url = Env.get("MAZE_DB_URL", Env.get("MYSQL_URL", "jdbc:mariadb://localhost:3306/pisid"));
+	        String user = Env.get("MAZE_DB_USER", Env.get("MYSQL_USER", "java1"));
+	        String password = Env.get("MAZE_DB_PASSWORD", Env.get("MYSQL_PASSWORD", "abc"));
+	        
+	        	
+	            
+	            String query = "SELECT numerodesalas FROM configuracaolabirinto";
+	            String query2 ="SELECT salaa , salab FROM corredor";
+	           
+	            
+	            try {
+		            Connection connection = DriverManager.getConnection(url, user, password);
+		            System.out.println("Connected to the database!");
+		            
+		            
+		            Statement statement = connection.createStatement();
+		            ResultSet resultSet = statement.executeQuery(query);
+		            
+		            if (resultSet.next()) {
+		                numeroSalas = resultSet.getInt("numerodesalas");
+		                System.out.println("Numero de Salas: " + numeroSalas);
+		            } else {
+		                System.out.println("No record found.");
+		            }
+		            
+	
+		            
+		            
+		            
+		            try (Statement statement2 = connection.createStatement();
+		                    ResultSet resultSet2 = statement.executeQuery(query2)) {
+		            	   //System.out.println("Salaa Salab" );
+		                   while (resultSet2.next()) {
+		                	   int salaa = resultSet2.getInt("salaa");
+		                	   int salab = resultSet2.getInt("salab");
+		                     // System.out.println(salaa + " " + salab);
+		                      List<Integer> corredor = new ArrayList<>();
+		                      corredor.add(salaa); // x-coordinate
+		                      corredor.add(salab); // y-coordinate
+		                      corredores.add(corredor);
+
+		               }
+		            } catch (SQLException e) {
+		                e.printStackTrace();
+		            }
+		            
+		            	
+		            for (List<Integer> corredor : corredores) {
+		                System.out.println("Salaa: " + corredor.get(0) + ", Salab: " + corredor.get(1));
+		            }
+
+		           
+		            connection.close();
+		            break;
+
+	               } catch (SQLException e) {
+	                   System.err.println("Failed to connect to pisid2024: " + e.getMessage());
+	                   Thread.sleep(1000);
+	               }
+		}
+	            
+	           }
+	
+	
+	
+	
+				
+				private static boolean isCorredorValid(int salaOrigem, int salaDestino) {
+				    for (List<Integer> corredor : corredores) {
+				        int salaa = corredor.get(0);
+				        int salab = corredor.get(1);
+				        if ((salaOrigem == salaa && salaDestino == salab) ) {
+				            return true; 
+				        }
+				    }
+				    return false; 
+				}
+		
+				private static boolean isGoingToRoomOne(int salaOrigem, int salaDestino) {
+					if(salaDestino==1) {
+						return true;
+					}
+					return false;
+				}
+			
+				
+				private static boolean isTerminated(int numeroExperiencia, MongoDatabase database) {
+				    String url = Env.get("MYSQL_URL", "jdbc:mariadb://localhost:3306/pisid");
+				    String user = Env.get("MYSQL_USER", "java1");
+				    String password = Env.get("MYSQL_PASSWORD", "abc");
+				    
+				    boolean isTerminated = false;
+
+				    try (Connection connection = DriverManager.getConnection(url, user, password)) {
+				    	//!!!!!!!!!!!!EEEEEEEEEEEEErroooo!!!!!!!!!
+				        String query = "SELECT * FROM `experiencia` WHERE IDExperiencia = ? AND Estado = 'Terminada'";
+				        try (PreparedStatement statement = connection.prepareStatement(query)) {
+				            statement.setInt(1, numeroExperiencia);
+				            try (ResultSet resultSet = statement.executeQuery()) {
+				                if (resultSet.next()) {
+				                    // If a record is found, the experience is terminated
+				                    isTerminated = true;
+				                    System.out.println("Experience with ID " + numeroExperiencia + " is terminated.");
+				                 
+				                    updateExperienciaADecorrer(database, 0);
+				                }
+				            }
+				        }
+				    } catch (SQLException e) {
+				        // Handle any SQL exceptions
+				        System.err.println("Failed to execute query: " + e.getMessage());
+				    }
+
+				    // Return the termination status
+				    return isTerminated;
+				}
+
+				
+				
+				
+				
+				private static void inatividadeAndConectividade(Connection connection) {	
+					try {	
+						 Statement statement = connection.createStatement();
+				         ResultSet resultSet = statement.executeQuery(" SELECT IDExperiencia, SegundosSemMovimento, TempoConectividade FROM `experiencia` WHERE Estado = 'ADecorrer' ");
+					   if (resultSet.next()) {
+							 IDExperiencia = resultSet.getInt("IDExperiencia");
+							 int segundosSemMovimento = resultSet.getInt("SegundosSemMovimento");
+							 int tempoConectividade = resultSet.getInt("TempoConectividade");
+							 Statement statement2 = connection.createStatement();
+					         ResultSet resultSet2 = statement.executeQuery("SELECT Hora FROM `medicoesPassagens` WHERE IDExperiencia = " + IDExperiencia +  " ORDER BY Hora DESC LIMIT 1");
+					         
+						            if (resultSet2.next()) {
+						               	Timestamp horaUltimaMedicao = resultSet2.getTimestamp("Hora");
+						                LocalDateTime horaAtual = LocalDateTime.now();
+						                LocalDateTime horaUltimaMedicaoLocal = horaUltimaMedicao.toLocalDateTime();
+				
+						                
+						                long diferencaSegundos = ChronoUnit.SECONDS.between(horaUltimaMedicaoLocal, horaAtual);
+						                
+						                System.out.println("SegundoSemResposta: " + diferencaSegundos);
+						                
+						                if (diferencaSegundos > segundosSemMovimento ) {
+						                    insertAlertaInatividade(connection);
+						                    System.out.println("Alerta: SegundosSemMovimento!");
+						                } else {
+						                    System.out.println("SegundosSemMovimento Dentro do limite");
+						                }
+
+						                if (diferencaSegundos > tempoConectividade ) {
+						                	System.out.println("Tempo de conectividade excedido!");
+						                    insertAlertaDesconexao(connection);
+						                   						                    						                    
+						                }
+						                
+						            }
+						
+				            
+					   }
+				 		 } catch (SQLException e) {
+				 			 e.printStackTrace();
+				 		 }
+							         
+				            
+				}
+				
+				
+				
+				
+				
+				public static void insertAlertaInatividade(Connection connection) {
+					
+					String sql = "INSERT INTO Alerta (TipoAlerta, Hora, Mensagem, HoraEscrita, Sala, Sensor, Leitura, IDExperiencia) " +
+			                "VALUES (?, CURRENT_TIMESTAMP(), ?, NULL, NULL, NULL, NULL, ?)";
+			   
+			   try ( PreparedStatement pstmt = connection.prepareStatement(sql)) {
+			       
+			       String tipoAlerta = "SegundosSemMovimento";
+			       String mensagem =  "SegundosSemMovimento";
+			       
+			       pstmt.setString(1, tipoAlerta);
+			       pstmt.setString(2, mensagem);
+			       pstmt.setInt(3, IDExperiencia);
+			       
+			       // Executa a consulta
+			       pstmt.executeUpdate();
+			       
+			       System.out.println("Alerta inserido com sucesso!");
+			       
+			   } catch (SQLException e) {
+			       System.out.println("Erro ao inserir o alerta: " + e.getMessage());
+			   }
+
+			}
+				
+				 private static boolean isExperienciaADecorrer(Connection connection) {
+						try {
+						 Statement statement = connection.createStatement();
+				         ResultSet resultSet = statement.executeQuery(" SELECT IDExperiencia FROM `experiencia` WHERE Estado = 'ADecorrer' ");
+					   if (resultSet.next()) {
+						   return true;
+						   
+					   } else { 
+						   return false;
+					   }
+					 } catch (SQLException e) {
+							 e.printStackTrace();
+							 return false;
+						 }
+						
+					}
+					
+					
+					
+					
+					
+					
+					public static void insertAlertaDesconexao(Connection connection) {
+				
+
+							String sql = "INSERT INTO Alerta (TipoAlerta, Hora, Mensagem, HoraEscrita, Sala, Sensor, Leitura, IDExperiencia) " +
+					                "VALUES (?, CURRENT_TIMESTAMP(), ?, NULL, NULL, NULL, NULL, ?)";
+					   
+							
+					   try ( PreparedStatement pstmt = connection.prepareStatement(sql)) {
+					       
+					       String tipoAlerta = "Conectividade";
+					       String mensagem =  "Tempo de conectividade excedido Movimentos!";
+					       
+					       pstmt.setString(1, tipoAlerta);
+					       pstmt.setString(2, mensagem);
+					       pstmt.setInt(3, IDExperiencia);
+					       
+					       // Executa a consulta
+					       pstmt.executeUpdate();
+					       
+					       System.out.println("Alerta inserido com sucesso!");
+					       
+					   } catch (SQLException e) {
+					       System.out.println("Erro ao inserir o alerta: " + e.getMessage());
+					   }
+
+					
+					
+					}
+						
+				
+				
+				
+				
+					private static int getLastId(MongoCollection<Document> collection) {
+					    BasicDBObject groupFields = new BasicDBObject("_id", null);
+					    groupFields.put("ultimoAutoIncremento", new BasicDBObject("$max", "$incremental_id"));
+					    BasicDBObject group = new BasicDBObject("$group", groupFields);
+
+					    AggregateIterable<Document> output = collection.aggregate(Arrays.asList(group));
+					    
+					    // Iterate over the aggregation output directly
+					    for (Document result : output) {
+					        Object ultimoAutoIncrementoObj = result.get("ultimoAutoIncremento");
+					        if (ultimoAutoIncrementoObj instanceof Integer) {
+					            int ultimoAutoIncremento = ((Integer) ultimoAutoIncrementoObj).intValue();
+					            System.out.println("Último autoincremento: " + ultimoAutoIncremento);
+					            return ultimoAutoIncremento;
+					        } else {
+					            System.out.println("Tipo de dado do autoincremento não é um inteiro.");
+					            return 0; 
+					        }
+					    }
+					    
+					    // If no results were found
+					    System.out.println("Nenhum resultado retornado pela agregação.");
+					    return 0; 
+					}
+
+				
+					  private static void uploadAnomalia(Document anomalydocument , MongoDatabase database ) {
+						  anomaliasId++;
+						  System.out.println("AnomaliaId:" + anomaliasId);
+						  anomalydocument.append("incremental_id", anomaliasId);
+						  SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSS");
+						  anomalydocument.append("current_time", formatter.format(new Date()));
+						  database.getCollection("anomalia").insertOne(anomalydocument);
+						  System.out.println("!!Anomalia Inserida!!");
+						  
+						  
+						 }
+						  
+				
+				
+				private static void insertRooms(Connection connection ,MongoDatabase database , int numRatos ,int IdExperiencia) {
+					
+				if(isDone(connection, IdExperiencia)) {		
+					
+					for ( int i= 1; i<= numeroSalas; i++) {
+						String sql = "INSERT INTO medicoesSalas (IDExperiencia, SalaID, NumeroRatosSala) " +
+		                "VALUES (?,?,?)";
+						
+						   try ( PreparedStatement pstmt = connection.prepareStatement(sql)) {
+						       
+							  if(i == 1) {
+						       pstmt.setInt(1, IDExperiencia);
+						       pstmt.setInt(2, i);
+						       pstmt.setInt(3, numRatos);
+						      
+						       pstmt.executeUpdate();
+							  } else {
+								  
+								  pstmt.setInt(1, IDExperiencia);
+							       pstmt.setInt(2, i);
+							       pstmt.setInt(3, 0);
+							      
+							       pstmt.executeUpdate();
+								  
+								  
+								  
+							  }
+						       
+						   } catch (SQLException e) {
+						       System.out.println("Erro ao inserir o alerta: " + e.getMessage());
+						 }
+						
+						
+						
+					}
+					
+					
+					System.out.println("!!!!!!!!SALAS INSERIDAS!!!!!!!!!!!!!!");
+				}
+			}
+				
+				
+				
+				
+				
+				
+				static int getNumRatos (Connection connection) {
+					String query = "SELECT NumeroRatos FROM experiencia where Estado = 'ADecorrer'";
+					int numeroRatos =0;
+					  try {
+		                  
+				            Statement statement = connection.createStatement();
+				            ResultSet resultSet = statement.executeQuery(query);
+				            
+				            if (resultSet.next()) {
+				            	numeroRatos = resultSet.getInt("NumeroRatos");
+				                System.out.println("Num Ratos: " + numeroRatos);
+				                return numeroRatos;
+				            } else {
+				                System.out.println("Nao se encontrou NUMERO DE RATOS");
+				                return 0;
+				            }
+				            
+			            } catch (SQLException e) {
+			            	return 0;
+			            }
+				}
+				
+				
+				
+				
+				
+				
+				
+				static boolean  isDone (Connection connection,  int IdExperiencia) {
+					
+					String query = "SELECT * FROM medicoessalas where IDExperiencia = " + IdExperiencia ;
+					 try {
+		                  
+				            Statement statement = connection.createStatement();
+				            ResultSet resultSet = statement.executeQuery(query);
+				            
+				            if (resultSet.next()) {
+				            	return false;
+				            } else {
+				               
+				                return true;
+				            }
+				            
+			            } catch (SQLException e) {
+			            	return true;
+			            }
+					
+					
+				}
+				
+				
+				
+				
+				
+				
+}
