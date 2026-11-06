@@ -45,6 +45,13 @@ curl -s -X POST http://localhost:8080/scripts/getMouseRoom.php
 
 Log in with username `java1`, password `abc`, the IP address of this machine, and port `8080`.
 
+Status: the app build is deferred. This VM cannot run an Android emulator (no `/dev/kvm`).
+
+Option: a real phone on the network.
+- With VirtualBox NAT, the phone cannot reach the VM. Use a bridged adapter, or forward host port 8080 to guest port 8080 and use the host IP.
+- Open port 8080 in the host firewall.
+- Android blocks cleartext HTTP by default. Allow it in `AndroidManifest.xml` (`android:usesCleartextTraffic="true"`) or in a network security config.
+
 ## Reset
 
 ```bash
