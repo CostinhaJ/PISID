@@ -1,6 +1,6 @@
 <?php 
-	$db = "pisid";
-	$dbhost = "localhost";
+	$db = getenv("DB_NAME") ?: "pisid";
+	$dbhost = getenv("DB_HOST") ?: "localhost";
 	$return["message"] = "";
 	$return["success"] = false;
 	$username = $_POST["username"];

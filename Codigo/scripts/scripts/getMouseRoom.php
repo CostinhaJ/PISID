@@ -1,10 +1,10 @@
 <?php
-    $db = "pisid"; 
-	$dbhost = "localhost"; 
+    $db = getenv("DB_NAME") ?: "pisid"; 
+	$dbhost = getenv("DB_HOST") ?: "localhost"; 
 	$username = $_POST["username"];
 	$password = $_POST["password"];
-	$username = "root";
-	$password = "abc";	
+	$username = getenv("DB_USER") ?: "root";
+	$password = getenv("DB_PASSWORD") ?: "abc";	
 	$conn = mysqli_connect($dbhost, $username, $password, $db);	
 	$sql = "SELECT SalaID, NumeroRatosSala FROM medicoessalas WHERE IDExperiencia IN ( SELECT IDExperiencia FROM experiencia WHERE estado = 'ADecorrer' ) ORDER BY SalaID ASC;";
 

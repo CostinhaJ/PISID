@@ -1,0 +1,148 @@
+# PISID recovery: full data flow on one machine.
+#   simulators --MQTT--> mqtt --> pc1 --> MongoDB replicaPisid --> migrators --> MariaDB pisid --> php --> Flutter app
+# Start:  cp .env.example .env && docker compose up -d --build
+# The Flutter app connects to http://<this machine IP>:${PHP_HOST_PORT:-8080}
+
+x-java: &java
+  build: ./java
+  restart: unless-stopped
+  environment: &java-env
+    MONGO_URI: mongodb://mongo1:27019,mongo2:25019,mongo3:23019/?replicaSet=replicaPisid
+    MYSQL_URL: jdbc:mariadb://mariadb:3306/pisid
+    MYSQL_USER: ${MYSQL_JAVA_USER}
+    MYSQL_PASSWORD: ${MYSQL_JAVA_PASSWORD}
+  depends_on:
+    mongo-init:
+      condition: service_completed_successfully
+    mariadb:
+      condition: service_healthy
+
+x-mongo: &mongo
+  image: mongo:4.4
+  restart: unless-stopped
+
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    ports:
+      - "1883:1883"
+
+  mongo1:
+    <<: *mongo
+    command: ["mongod", "--replSet", "replicaPisid", "--port", "27019", "--bind_ip_all"]
+    ports: ["27019:27019"]
+    volumes: [mongo1-data:/data/db]
+  mongo2:
+    <<: *mongo
+    command: ["mongod", "--replSet", "replicaPisid", "--port", "25019", "--bind_ip_all"]
+    ports: ["25019:25019"]
+    volumes: [mongo2-data:/data/db]
+  mongo3:
+    <<: *mongo
+    command: ["mongod", "--replSet", "replicaPisid", "--port", "23019", "--bind_ip_all"]
+    ports: ["23019:23019"]
+    volumes: [mongo3-data:/data/db]
+
+  mongo-init:
+    image: mongo:4.4
+    restart: "no"
+    volumes:
+      - ./infra/mongo/init-replica.sh:/init-replica.sh:ro
+    entrypoint: ["bash", "/init-replica.sh"]
+    depends_on: [mongo1, mongo2, mongo3]
+
+  mariadb:
+    image: mariadb:10.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MARIADB_DATABASE: pisid
+      MYSQL_JAVA_USER: ${MYSQL_JAVA_USER}
+      MYSQL_JAVA_PASSWORD: ${MYSQL_JAVA_PASSWORD}
+    volumes:
+      - ./infra/mariadb/my.cnf:/etc/mysql/conf.d/pisid.cnf:ro
+      - ./infra/mariadb/init:/docker-entrypoint-initdb.d:ro
+      - mariadb-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MARIADB_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  php:
+    build:
+      context: .
+      dockerfile: infra/php/Dockerfile
+    restart: unless-stopped
+    environment:
+      DB_HOST: mariadb
+      DB_NAME: pisid
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "${PHP_HOST_PORT:-8080}:80"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  # --- Java processes (java/src) ---
+  pc1:
+    <<: *java
+    command: ["Pc1"]
+    environment:
+      <<: *java-env
+      MQTT_BROKER: tcp://mqtt:1883
+      MQTT_CLIENT_ID: pisid-pc1
+      MQTT_TOPIC_TEMP: ${MQTT_TOPIC_TEMP}
+      MQTT_TOPIC_MAZE: ${MQTT_TOPIC_MAZE}
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      mqtt:
+        condition: service_started
+  sensor1:
+    <<: *java
+    command: ["Sensor1Novo"]
+  sensor2:
+    <<: *java
+    command: ["Sensor2Novo"]
+  movimentos:
+    <<: *java
+    command: ["Movimentos"]
+  anomalias:
+    <<: *java
+    command: ["Anomalias"]
+
+  # --- Sensor simulators (Sensores/) ---
+  sim-temp:
+    build: ./Sensores
+    restart: unless-stopped
+    command: ["python", "simulatemp.py"]
+    environment:
+      MQTT_HOST: mqtt
+      MQTT_PORT: "1883"
+      MQTT_TOPIC_TEMP: ${MQTT_TOPIC_TEMP}
+    depends_on: [mqtt, pc1]
+  sim-maze:
+    build: ./Sensores
+    restart: unless-stopped
+    command: ["python", "simulalabirinto.py"]
+    environment:
+      MQTT_HOST: mqtt
+      MQTT_PORT: "1883"
+      MQTT_TOPIC_MAZE: ${MQTT_TOPIC_MAZE}
+      SIM_NUMBER_MICE: ${SIM_NUMBER_MICE:-5}
+      SIM_NUMBER_ROOMS: ${SIM_NUMBER_ROOMS:-4}
+      SIM_STEPS_LIMIT: ${SIM_STEPS_LIMIT:-10}
+    depends_on: [mqtt, pc1, sim-temp]
+
+volumes:
+  mongo1-data:
+  mongo2-data:
+  mongo3-data:
+  mariadb-data:
